@@ -52,7 +52,7 @@ namespace CoffeeMugTest.Data
         {
             using (var sqlConnection = new SqlConnection(connectionString))
             {
-                string query = $"SELECT * from Products WHERE Id = '  {Id}'";
+                string query = $"SELECT * from Products WHERE Id = '{Id}'";
                 Products result;
                 try
                 {
@@ -92,17 +92,21 @@ namespace CoffeeMugTest.Data
         {
             using (var sqlConnection = new SqlConnection(connectionString))
             {
-                string query = $"UPDATE Products set Name = '{product.Name}', Price = '{product.Price}' WHERE Id = '{product.Id}'";
-
-                try
+                var isExisting = GetProduct(product.Id);
+                
+                if (isExisting.Result!=null)
                 {
-                    await sqlConnection.OpenAsync();
-                    await sqlConnection.ExecuteAsync(query);
-                }
-                catch (Exception)
-                {
+                    string query = $"UPDATE Products set Name = '{product.Name}', Price = '{product.Price}' WHERE Id = '{product.Id}'";
 
-                    throw;
+                    try
+                    {
+                        await sqlConnection.OpenAsync();
+                        await sqlConnection.ExecuteAsync(query);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
                 }
             }
         }

@@ -9,6 +9,8 @@ using CoffeeMugTest.Models;
 using System.Data;
 using System.Data.SqlClient;
 using CoffeeMugTest.Data;
+using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace CoffeeMugTest.Controllers
 {
@@ -18,17 +20,30 @@ namespace CoffeeMugTest.Controllers
     public class ProductController : ControllerBase
     {
         private readonly ProductDataProvider _dataProvider;
+        private readonly ILogger<ProductController> _logger;
 
-        public ProductController()
+        public ProductController(ILogger<ProductController> logger)
         {
             _dataProvider = new ProductDataProvider();
+            _logger = logger;
         }
         
 
         [HttpGet("/api/list")]
         public async Task<IEnumerable<Products>> List()
         {
-            return await _dataProvider.GetProducts();            
+            _logger.LogDebug("Get all products.");
+
+            try
+            {
+                return await _dataProvider.GetProducts();
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occured. Check stacktrace below: \n\n" + ex.StackTrace);
+                throw ex;
+            }
         }
 
         [HttpGet("/api/product/{id}")]
@@ -38,13 +53,22 @@ namespace CoffeeMugTest.Controllers
             {
                 return BadRequest(ModelState);
             }
-
-            var product = await _dataProvider.GetProduct(id);
-
-            if (product == null)
+            Products product;
+            try
             {
-                return NotFound();
+                product = await _dataProvider.GetProduct(id);
+                if (product == null)
+                {
+                    _logger.LogWarning($"No product with guid: {id} in database!");
+                    return NotFound();
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occured. Check stacktrace below: \n\n" + ex.StackTrace);
+                throw ex;
+            }
+           
             return Ok(product);
         }
 
@@ -62,9 +86,10 @@ namespace CoffeeMugTest.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("An error occured. Check stacktrace below: \n\n" + ex.StackTrace);
                 throw ex;
             }
-            
+            _logger.LogDebug($"New product with guid {product.Id} added succesfully.");
             return Ok(product.Id);
         }
 
@@ -82,8 +107,10 @@ namespace CoffeeMugTest.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("An error occured. Check stacktrace below: \n\n" + ex.StackTrace);
                 throw ex;
             }
+            _logger.LogDebug($"Product {product.Name} with guid: {product.Id} has been updated succesfully.");
             return Ok($"Product {product.Name} has been updated succesfully.");
         }
 
@@ -95,8 +122,16 @@ namespace CoffeeMugTest.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _dataProvider.DeleteProduct(id);
-
+            try
+            {
+                await _dataProvider.DeleteProduct(id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occured. Check stacktrace below: \n\n" + ex.StackTrace);
+                throw ex;
+            }
+            _logger.LogDebug($"product {id} has been deleted succesfully");
             return Ok($"product {id} has been deleted succesfully");
         }
     }
